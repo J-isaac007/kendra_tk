@@ -1,26 +1,79 @@
 """
 views/app.py
-Root Tk window, background rendering, and page manager.
+Root Tk window. Gradient background drawn once with Canvas line drawing.
+No PIL, no image loading, no resize redraws.
 """
-import os
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageTk, ImageDraw
+from assets.styles.theme import COLORS, font
 
-from assets.styles.theme import COLORS, load_fonts, font
+# ── ttk style setup ───────────────────────────────────────────────────────────
 
-BG_PATH = os.path.normpath(os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "..", "assets", "images", "background.jpg"
-))
+def _setup_ttk_styles(root):
+    style = ttk.Style(root)
+    style.theme_use("clam")
+
+    # Scrollbar — thin and subtle
+    style.configure("Kendra.Vertical.TScrollbar",
+        background=COLORS["bg_elevated"],
+        troughcolor=COLORS["bg_surface"],
+        bordercolor=COLORS["bg_surface"],
+        arrowcolor=COLORS["text_muted"],
+        relief="flat", borderwidth=0,
+        width=6,
+    )
+    style.map("Kendra.Vertical.TScrollbar",
+        background=[("active", COLORS["border"])],
+    )
+
+    # Combobox
+    style.configure("Kendra.TCombobox",
+        fieldbackground=COLORS["bg_input"],
+        background=COLORS["bg_elevated"],
+        foreground=COLORS["text_primary"],
+        arrowcolor=COLORS["text_secondary"],
+        bordercolor=COLORS["border"],
+        lightcolor=COLORS["bg_input"],
+        darkcolor=COLORS["bg_input"],
+        selectbackground=COLORS["accent"],
+        selectforeground=COLORS["text_inverse"],
+        padding=(8, 6),
+    )
+    style.map("Kendra.TCombobox",
+        fieldbackground=[("readonly", COLORS["bg_input"])],
+        foreground=[("readonly", COLORS["text_primary"])],
+    )
+
+
+# ── Gradient canvas ───────────────────────────────────────────────────────────
+
+def _draw_gradient(canvas, width: int, height: int):
+    """Draw a vertical gradient from bg_base to bg_surface. Fast, no PIL."""
+    # Parse hex colors
+    def hex_to_rgb(h):
+        h = h.lstrip("#")
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+    top = hex_to_rgb(COLORS["bg_base"])
+    bot = hex_to_rgb(COLORS["bg_surface"])
+
+    canvas.delete("gradient")
+    steps = min(height, 400)  # cap steps for performance
+    for i in range(steps):
+        t = i / steps
+        r = int(top[0] + (bot[0] - top[0]) * t)
+        g = int(top[1] + (bot[1] - top[1]) * t)
+        b = int(top[2] + (bot[2] - top[2]) * t)
+        color = f"#{r:02x}{g:02x}{b:02x}"
+        y0 = int(i * height / steps)
+        y1 = int((i + 1) * height / steps)
+        canvas.create_rectangle(
+            0, y0, width, y1,
+            fill=color, outline=color, tags="gradient"
+        )
 
 
 class KendraApp(tk.Tk):
-    """
-    Root application window.
-    Manages the background canvas, topbar, notification bar, and page stack.
-    """
-
     def __init__(self):
         super().__init__()
         self.title("Kendra")
@@ -28,119 +81,49 @@ class KendraApp(tk.Tk):
         self.minsize(1024, 680)
         self.configure(bg=COLORS["bg_base"])
 
-        # Load fonts before building UI
-        load_fonts(self)
+        _setup_ttk_styles(self)
 
-        # ── Background canvas ────────────────────────────────────
+        # ── Gradient background ──────────────────────────────────
         self._bg_canvas = tk.Canvas(
             self, highlightthickness=0, bd=0,
             bg=COLORS["bg_base"]
         )
         self._bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
-        self._bg_photo = None
-        self._load_background()
-        self.bind("<Configure>", self._on_resize)
 
-        # ── Main layout ──────────────────────────────────────────
-        # Topbar placeholder (set by controller)
+        # Draw gradient once after window is ready
+        self.after(50, self._draw_once)
+
+        # ── Top bar frame ─────────────────────────────────────────
         self.topbar_frame = tk.Frame(
-            self, bg=COLORS["topbar_bg"], height=58
+            self, bg=COLORS["topbar_bg"], height=52
         )
         self.topbar_frame.place(x=0, y=0, relwidth=1)
         self.topbar_frame.pack_propagate(False)
 
-        # Notification bar placeholder
-        self.notif_frame = tk.Frame(
-            self, bg=COLORS["bg_base"], height=0
+        # Top bar bottom border
+        self._topbar_border = tk.Frame(
+            self, bg=COLORS["topbar_border"], height=1
         )
-        self.notif_frame.place(x=0, y=58, relwidth=1)
+        self._topbar_border.place(x=0, y=52, relwidth=1)
 
-        # Page area
-        self.page_area = tk.Frame(
-            self, bg=COLORS["bg_base"]
-        )
-        self.page_area.place(x=0, y=58, relwidth=1, relheight=1)
+        # ── Toast notification bar ────────────────────────────────
+        self.notif_frame = tk.Frame(self, bg=COLORS["bg_base"], height=0)
+        self.notif_frame.place(x=0, y=53, relwidth=1)
+
+        # ── Page area ─────────────────────────────────────────────
+        self.page_area = tk.Frame(self, bg=COLORS["bg_base"])
+        self.page_area.place(x=0, y=53, relwidth=1, relheight=1)
 
         # Page registry
         self._pages: dict[str, tk.Frame] = {}
         self._current_page: str = ""
 
-    # ── Background ───────────────────────────────────────────────
+    def _draw_once(self):
+        w = self.winfo_width()
+        h = self.winfo_height()
+        _draw_gradient(self._bg_canvas, w, h)
 
-    def _load_background(self):
-        if os.path.exists(BG_PATH):
-            try:
-                self._bg_original = Image.open(BG_PATH)
-                self._render_background()
-                print("[Kendra] Background loaded.")
-                return
-            except Exception as e:
-                print(f"[Kendra] Background load failed: {e}")
-        print(f"[Kendra] No background at {BG_PATH} — using gradient.")
-        self._bg_original = None
-        self._render_gradient()
-
-    def _render_background(self):
-        w = self.winfo_width()  or 1280
-        h = self.winfo_height() or 800
-        if not self._bg_original:
-            return
-
-        # Scale to cover
-        img = self._bg_original.copy()
-        img_ratio = img.width / img.height
-        win_ratio = w / h
-        if img_ratio > win_ratio:
-            new_h = h
-            new_w = int(h * img_ratio)
-        else:
-            new_w = w
-            new_h = int(w / img_ratio)
-        img = img.resize((new_w, new_h), Image.LANCZOS)
-
-        # Center crop
-        x = (new_w - w) // 2
-        y = (new_h - h) // 2
-        img = img.crop((x, y, x + w, y + h))
-
-        # Dark overlay
-        overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-        # Gradient from top-dark to mid-lighter
-        for row in range(h):
-            alpha = int(180 - (row / h) * 60)
-            draw.line([(0, row), (w, row)], fill=(0, 0, 0, alpha))
-        img = img.convert("RGBA")
-        img = Image.alpha_composite(img, overlay)
-        img = img.convert("RGB")
-
-        self._bg_photo = ImageTk.PhotoImage(img)
-        self._bg_canvas.delete("all")
-        self._bg_canvas.create_image(0, 0, anchor="nw", image=self._bg_photo)
-
-    def _render_gradient(self):
-        w = self.winfo_width()  or 1280
-        h = self.winfo_height() or 800
-        img = Image.new("RGB", (w, h))
-        draw = ImageDraw.Draw(img)
-        for row in range(h):
-            t = row / h
-            r = int(0x16 * (1-t) + 0x0d * t)
-            g = int(0x15 * (1-t) + 0x0c * t)
-            b = int(0x0f * (1-t) + 0x08 * t)
-            draw.line([(0, row), (w, row)], fill=(r, g, b))
-        self._bg_photo = ImageTk.PhotoImage(img)
-        self._bg_canvas.delete("all")
-        self._bg_canvas.create_image(0, 0, anchor="nw", image=self._bg_photo)
-
-    def _on_resize(self, event):
-        if hasattr(self, "_bg_original"):
-            if self._bg_original:
-                self._render_background()
-            else:
-                self._render_gradient()
-
-    # ── Page management ──────────────────────────────────────────
+    # ── Page management ───────────────────────────────────────────
 
     def register_page(self, page_id: str, page_frame: tk.Frame):
         self._pages[page_id] = page_frame
@@ -153,49 +136,44 @@ class KendraApp(tk.Tk):
             page.tkraise()
             self._current_page = page_id
 
-    def show_toast(self, text: str, icon: str = "🔔", duration_ms: int = 5000):
-        """Show a brief notification bar at the top."""
-        # Clear existing toast
+    # ── Toast notifications ───────────────────────────────────────
+
+    def show_toast(self, text: str, icon: str = "●", duration_ms: int = 4000):
         for w in self.notif_frame.winfo_children():
             w.destroy()
 
-        self.notif_frame.config(height=46)
-        self.page_area.place(y=104)  # push page down
+        self.notif_frame.config(height=40)
+        self.page_area.place(y=93)
 
-        bar = tk.Frame(self.notif_frame, bg="#2a2810",
-                       pady=0)
-        bar.pack(fill="x", padx=12, pady=4)
+        bar = tk.Frame(self.notif_frame, bg=COLORS["bg_elevated"])
+        bar.pack(fill="x", padx=16, pady=4)
 
-        inner = tk.Frame(bar, bg="#2a2810")
-        inner.pack(fill="x", padx=12, pady=8)
-
-        tk.Label(inner, text=icon, bg="#2a2810",
-                 fg=COLORS["accent_gold"],
-                 font=font("base")).pack(side="left", padx=(0, 8))
-
-        tk.Label(inner, text=text, bg="#2a2810",
-                 fg=COLORS["accent_gold"],
-                 font=font("base", "bold")).pack(side="left")
-
-        close = tk.Button(
-            inner, text="✕",
-            bg="#2a2810", fg=COLORS["text_muted"],
-            relief="flat", bd=0, cursor="hand2",
-            font=font("base"),
-            command=self._hide_toast,
-        )
-        close.pack(side="right")
-
-        # Border
-        tk.Frame(bar, bg=COLORS["accent_gold_dim"], height=1).pack(
-            fill="x", side="bottom"
+        # Left accent bar
+        tk.Frame(bar, bg=COLORS["accent"], width=3).pack(
+            side="left", fill="y"
         )
 
-        # Auto-dismiss
+        inner = tk.Frame(bar, bg=COLORS["bg_elevated"])
+        inner.pack(side="left", fill="x", expand=True, padx=10, pady=8)
+
+        tk.Label(inner, text=f"{icon}  {text}",
+                 bg=COLORS["bg_elevated"],
+                 fg=COLORS["text_primary"],
+                 font=font("sm", "bold"),
+                 anchor="w").pack(side="left")
+
+        tk.Button(inner, text="✕",
+                  bg=COLORS["bg_elevated"],
+                  fg=COLORS["text_muted"],
+                  relief="flat", bd=0,
+                  font=font("xs"),
+                  cursor="hand2",
+                  command=self._hide_toast).pack(side="right")
+
         self.after(duration_ms, self._hide_toast)
 
     def _hide_toast(self):
         for w in self.notif_frame.winfo_children():
             w.destroy()
         self.notif_frame.config(height=0)
-        self.page_area.place(y=58)
+        self.page_area.place(y=53)

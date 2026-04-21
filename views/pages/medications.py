@@ -1,116 +1,112 @@
 """
-views/pages/medications.py
+views/pages/medications.py — Kendra Pro
 """
 import tkinter as tk
 from assets.styles.theme import COLORS, font
 from views.pages.base import (
-    ScrollableFrame, ProgressBar, TabBar, primary_btn,
-    ghost_btn, danger_btn, form_label, styled_entry,
-    styled_combobox, EmptyState, NoPetWidget, badge
+    ScrollableFrame, ProgressBar, TabBar,
+    primary_btn, ghost_btn, danger_btn,
+    form_label, styled_entry, styled_combobox,
+    EmptyState, NoPetWidget, check_btn, page_header
 )
 
 
 class MedDialog(tk.Toplevel):
     def __init__(self, parent, pet_id, med=None, on_save=None):
         super().__init__(parent)
-        self.pet_id  = pet_id
-        self.med     = med
+        self.pet_id = pet_id
+        self.med = med
         self._on_save = on_save
         self.title("Edit Medication" if med else "Add Medication")
-        self.configure(bg=COLORS["bg_card"])
+        self.configure(bg=COLORS["bg_surface"])
         self.resizable(False, False)
         self.grab_set()
         self.transient(parent)
         self._build()
 
     def _build(self):
-        tk.Label(
-            self,
-            text="Edit Medication" if self.med else "Add Medication",
-            bg=COLORS["bg_card"], fg=COLORS["text_primary"],
-            font=font("lg", "bold"),
-        ).pack(anchor="w", padx=20, pady=(20, 8))
+        bg = COLORS["bg_surface"]
+        tk.Label(self, text="Edit Medication" if self.med else "Add Medication",
+                 bg=bg, fg=COLORS["text_primary"],
+                 font=font("lg", "bold")).pack(anchor="w", padx=24, pady=(20, 4))
+        tk.Frame(self, bg=COLORS["border"], height=1).pack(fill="x", padx=24, pady=(0, 16))
 
-        row1 = tk.Frame(self, bg=COLORS["bg_card"])
-        row1.pack(fill="x", padx=20, pady=(0, 8))
+        row1 = tk.Frame(self, bg=bg)
+        row1.pack(fill="x", padx=24, pady=(0, 12))
 
-        n_col = tk.Frame(row1, bg=COLORS["bg_card"])
-        n_col.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        form_label(n_col, "Name").pack(anchor="w")
-        self._name_var = tk.StringVar(value=self.med.name if self.med else "")
-        styled_entry(n_col, self._name_var, placeholder="e.g. Flea treatment").pack(fill="x")
+        n = tk.Frame(row1, bg=bg)
+        n.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        form_label(n, "Name", bg=bg).pack(anchor="w")
+        self._name_f = styled_entry(n, placeholder="Flea treatment", bg=bg)
+        self._name_f.pack(fill="x", pady=(4, 0))
+        if self.med and self.med.name: self._name_f.set(self.med.name)
 
-        d_col = tk.Frame(row1, bg=COLORS["bg_card"])
-        d_col.pack(side="left", fill="x", expand=True)
-        form_label(d_col, "Dosage").pack(anchor="w")
-        self._dosage_var = tk.StringVar(value=self.med.dosage or "" if self.med else "")
-        styled_entry(d_col, self._dosage_var, placeholder="e.g. 1 tablet").pack(fill="x")
+        d = tk.Frame(row1, bg=bg)
+        d.pack(side="left", fill="x", expand=True)
+        form_label(d, "Dosage", bg=bg).pack(anchor="w")
+        self._dosage_f = styled_entry(d, placeholder="1 tablet", bg=bg)
+        self._dosage_f.pack(fill="x", pady=(4, 0))
+        if self.med and self.med.dosage: self._dosage_f.set(self.med.dosage)
 
-        row2 = tk.Frame(self, bg=COLORS["bg_card"])
-        row2.pack(fill="x", padx=20, pady=(0, 8))
+        row2 = tk.Frame(self, bg=bg)
+        row2.pack(fill="x", padx=24, pady=(0, 12))
 
-        f_col = tk.Frame(row2, bg=COLORS["bg_card"])
-        f_col.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        form_label(f_col, "Frequency").pack(anchor="w")
+        f = tk.Frame(row2, bg=bg)
+        f.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        form_label(f, "Frequency", bg=bg).pack(anchor="w")
         self._freq_var = tk.StringVar(value=self.med.frequency if self.med else "daily")
-        cb = styled_combobox(
-            f_col,
-            ["daily","twice daily","weekly","monthly","as needed"],
-            self._freq_var, width=16
-        )
-        cb.pack(fill="x")
+        styled_combobox(f, ["daily","twice daily","weekly","monthly","as needed"],
+                        self._freq_var, width=16).pack(fill="x", pady=(4, 0))
 
-        t_col = tk.Frame(row2, bg=COLORS["bg_card"])
-        t_col.pack(side="left", fill="x", expand=True)
-        form_label(t_col, "Reminder Time").pack(anchor="w")
-        self._time_var = tk.StringVar(value=self.med.time or "08:00" if self.med else "08:00")
-        styled_entry(t_col, self._time_var, placeholder="08:00", width=10).pack(fill="x")
+        t = tk.Frame(row2, bg=bg)
+        t.pack(side="left", fill="x", expand=True)
+        form_label(t, "Time", bg=bg).pack(anchor="w")
+        self._time_f = styled_entry(t, placeholder="08:00", width=10, bg=bg)
+        self._time_f.pack(fill="x", pady=(4, 0))
+        if self.med and self.med.time: self._time_f.set(self.med.time)
 
-        row3 = tk.Frame(self, bg=COLORS["bg_card"])
-        row3.pack(fill="x", padx=20, pady=(0, 8))
+        row3 = tk.Frame(self, bg=bg)
+        row3.pack(fill="x", padx=24, pady=(0, 12))
 
-        s_col = tk.Frame(row3, bg=COLORS["bg_card"])
-        s_col.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        form_label(s_col, "Start Date").pack(anchor="w")
-        self._start_var = tk.StringVar(value=self.med.start_date if self.med else "")
-        styled_entry(s_col, self._start_var, placeholder="YYYY-MM-DD").pack(fill="x")
+        s = tk.Frame(row3, bg=bg)
+        s.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        form_label(s, "Start Date", bg=bg).pack(anchor="w")
+        self._start_f = styled_entry(s, placeholder="YYYY-MM-DD", bg=bg)
+        self._start_f.pack(fill="x", pady=(4, 0))
+        if self.med and self.med.start_date: self._start_f.set(self.med.start_date)
 
-        e_col = tk.Frame(row3, bg=COLORS["bg_card"])
-        e_col.pack(side="left", fill="x", expand=True)
-        form_label(e_col, "End Date (optional)").pack(anchor="w")
-        self._end_var = tk.StringVar(value=self.med.end_date or "" if self.med else "")
-        styled_entry(e_col, self._end_var, placeholder="YYYY-MM-DD").pack(fill="x")
+        e = tk.Frame(row3, bg=bg)
+        e.pack(side="left", fill="x", expand=True)
+        form_label(e, "End Date (optional)", bg=bg).pack(anchor="w")
+        self._end_f = styled_entry(e, placeholder="YYYY-MM-DD", bg=bg)
+        self._end_f.pack(fill="x", pady=(4, 0))
+        if self.med and self.med.end_date: self._end_f.set(self.med.end_date)
 
-        form_label(self, "Notes").pack(anchor="w", padx=20)
-        self._notes_var = tk.StringVar(value=self.med.notes or "" if self.med else "")
-        styled_entry(self, self._notes_var, placeholder="Give with food…").pack(
-            fill="x", padx=20, pady=(0, 12)
-        )
+        form_label(self, "Notes", bg=bg).pack(anchor="w", padx=24)
+        self._notes_f = styled_entry(self, placeholder="Give with food…", bg=bg)
+        self._notes_f.pack(fill="x", padx=24, pady=(4, 16))
+        if self.med and self.med.notes: self._notes_f.set(self.med.notes)
 
-        actions = tk.Frame(self, bg=COLORS["bg_card"])
-        actions.pack(fill="x", padx=20, pady=(0, 20))
-        ghost_btn(actions, "Cancel", self.destroy).pack(side="right", padx=(8,0))
-        primary_btn(
-            actions,
-            "Save" if self.med else "Add",
-            self._on_submit
-        ).pack(side="right")
+        tk.Frame(self, bg=COLORS["border"], height=1).pack(fill="x", padx=24, pady=(0, 12))
+        acts = tk.Frame(self, bg=bg)
+        acts.pack(fill="x", padx=24, pady=(0, 20))
+        ghost_btn(acts, "Cancel", self.destroy).pack(side="right", padx=(8, 0))
+        primary_btn(acts, "Save" if self.med else "Add", self._submit).pack(side="right")
 
-    def _on_submit(self):
-        name = self._name_var.get().strip()
+    def _submit(self):
+        name = self._name_f.get().strip()
         if not name: return
-        end = self._end_var.get().strip() or None
         if self._on_save:
             self._on_save({
-                "pet_id":     self.pet_id,
-                "name":       name,
-                "dosage":     self._dosage_var.get().strip() or None,
-                "frequency":  self._freq_var.get(),
-                "time":       self._time_var.get().strip() or None,
-                "start_date": self._start_var.get().strip(),
-                "end_date":   end,
-                "notes":      self._notes_var.get().strip() or None,
-                "med_id":     self.med.id if self.med else None,
+                "pet_id": self.pet_id,
+                "name": name,
+                "dosage": self._dosage_f.get().strip() or None,
+                "frequency": self._freq_var.get(),
+                "time": self._time_f.get().strip() or None,
+                "start_date": self._start_f.get().strip(),
+                "end_date": self._end_f.get().strip() or None,
+                "notes": self._notes_f.get().strip() or None,
+                "med_id": self.med.id if self.med else None,
             })
         self.destroy()
 
@@ -118,141 +114,154 @@ class MedDialog(tk.Toplevel):
 class MedicationsPage(tk.Frame):
     def __init__(self, parent, **kwargs):
         super().__init__(parent, bg=COLORS["bg_base"], **kwargs)
-        self._pet    = None
-        self._today  = []
-        self._all    = []
-        self.cb_add_med    = None
-        self.cb_edit_med   = None
-        self.cb_delete_med = None
+        self._pet = None
+        self._today = []
+        self._all = []
         self.cb_mark_given = None
-        self.cb_skip_dose  = None
-        self._build_header()
-        self._content = tk.Frame(self, bg=COLORS["bg_base"])
-        self._content.pack(fill="both", expand=True, padx=32)
+        self.cb_skip_dose = None
+        self.cb_add_med = None
+        self.cb_edit_med = None
+        self.cb_delete_med = None
 
-    def _build_header(self):
-        hdr = tk.Frame(self, bg=COLORS["bg_base"])
-        hdr.pack(fill="x", padx=32, pady=(32, 16))
-        left = tk.Frame(hdr, bg=COLORS["bg_base"])
-        left.pack(side="left", fill="x", expand=True)
-        tk.Label(left, text="Medications", bg=COLORS["bg_base"],
-                 fg=COLORS["text_primary"], font=font("hero","bold"),
-                 anchor="w").pack(fill="x")
-        self._subtitle = tk.Label(left, text="", bg=COLORS["bg_base"],
-                                  fg=COLORS["text_muted"], font=font("sm"), anchor="w")
-        self._subtitle.pack(fill="x")
-        primary_btn(hdr, "＋  Add Medication", self._open_add).pack(side="right", anchor="n")
+        self._hdr = page_header(self, "Medications", action_text="＋  Add Medication",
+                                action_cmd=self._open_add)
+        self._hdr.pack(fill="x", padx=32, pady=(28, 0))
+        self._subtitle = tk.Label(self, text="", bg=COLORS["bg_base"],
+                                  fg=COLORS["text_secondary"], font=font("sm"), anchor="w")
+        self._subtitle.pack(fill="x", padx=32, pady=(2, 16))
+
+        self._content = tk.Frame(self, bg=COLORS["bg_base"])
+        self._content.pack(fill="both", expand=True, padx=32, pady=(0, 24))
 
     def show_no_pet(self):
-        self._clear_content()
+        self._clear()
         NoPetWidget(self._content, "medications").pack(fill="both", expand=True)
 
     def load(self, pet, today, all_meds):
-        self._pet   = pet
+        self._pet = pet
         self._today = today
-        self._all   = all_meds
+        self._all = all_meds
         self._subtitle.config(text=f"{pet.name}'s medication tracker")
         self._refresh()
 
     def _refresh(self):
-        self._clear_content()
-        done  = sum(1 for m in self._today if m.get("given_today"))
+        self._clear()
+        done = sum(1 for m in self._today if m.get("given_today"))
         total = len(self._today)
         if total:
-            pb = ProgressBar(self._content, "Today's medications")
+            pb = ProgressBar(self._content, "Today's medications", bg=COLORS["bg_base"])
             pb.pack(fill="x", pady=(0, 16))
             pb.update_progress(done, total)
 
-        self._stack_today = tk.Frame(self._content, bg=COLORS["bg_base"])
-        self._stack_all   = tk.Frame(self._content, bg=COLORS["bg_base"])
+        self._tab_today = tk.Frame(self._content, bg=COLORS["bg_base"])
+        self._tab_all   = tk.Frame(self._content, bg=COLORS["bg_base"])
 
-        def on_tab(idx):
+        def switch(idx):
             if idx == 0:
-                self._stack_today.pack(fill="both", expand=True)
-                self._stack_all.pack_forget()
+                self._tab_today.pack(fill="both", expand=True)
+                self._tab_all.pack_forget()
             else:
-                self._stack_all.pack(fill="both", expand=True)
-                self._stack_today.pack_forget()
+                self._tab_all.pack(fill="both", expand=True)
+                self._tab_today.pack_forget()
 
-        TabBar(self._content, ["Today","All Medications"], on_change=on_tab).pack(fill="x", pady=(0,12))
+        TabBar(self._content, ["Today", "All Medications"],
+               on_change=switch).pack(fill="x", pady=(0, 12))
         self._build_today()
         self._build_all()
-        self._stack_today.pack(fill="both", expand=True)
+        self._tab_today.pack(fill="both", expand=True)
 
     def _build_today(self):
-        sf = ScrollableFrame(self._stack_today, bg=COLORS["bg_base"])
+        sf = ScrollableFrame(self._tab_today, bg=COLORS["bg_base"])
         sf.pack(fill="both", expand=True)
         f = sf.scrollable_frame
         if not self._today:
-            EmptyState(f, "💊", "No medications today").pack(fill="both", expand=True, pady=40)
+            EmptyState(f, "💊", "No medications due today",
+                       bg=COLORS["bg_base"]).pack(fill="both", expand=True, pady=40)
             return
         for m in self._today:
-            row = tk.Frame(f, bg=COLORS["bg_card"], pady=12, padx=14)
-            row.pack(fill="x", pady=(0,6))
             done = m.get("given_today", False)
-            cb = tk.Button(row, text="✓" if done else "○",
-                bg=COLORS["accent_sage"] if done else COLORS["bg_elevated"],
-                fg="white" if done else COLORS["text_muted"],
-                font=font("base","bold"), relief="flat", bd=0, width=3,
-                cursor="hand2" if not done else "arrow")
-            cb.pack(side="left", padx=(0,12))
-            if not done:
-                cb.config(command=lambda mid=m["id"]: self.cb_mark_given and self.cb_mark_given(mid))
-            info = tk.Frame(row, bg=COLORS["bg_card"])
+            row = tk.Frame(f, bg=COLORS["bg_surface"])
+            row.pack(fill="x", pady=(0, 1))
+            accent = COLORS["accent_green"] if done else COLORS["accent_purple"]
+            tk.Frame(row, bg=accent, width=3).pack(side="left", fill="y")
+            inner = tk.Frame(row, bg=COLORS["bg_surface"], padx=14, pady=10)
+            inner.pack(side="left", fill="both", expand=True)
+
+            cb = check_btn(inner, done,
+                           command=lambda mid=m["id"]: self.cb_mark_given and self.cb_mark_given(mid),
+                           bg=COLORS["bg_surface"])
+            cb.pack(side="left", padx=(0, 12))
+
+            info = tk.Frame(inner, bg=COLORS["bg_surface"])
             info.pack(side="left", fill="x", expand=True)
-            tk.Label(info, text=m["name"], bg=COLORS["bg_card"],
-                     fg=COLORS["text_primary"], font=font("base","bold"), anchor="w").pack(fill="x")
+            tk.Label(info, text=m["name"], bg=COLORS["bg_surface"],
+                     fg=COLORS["text_primary"], font=font("sm", "bold"),
+                     anchor="w").pack(fill="x")
             parts = [p for p in [m.get("dosage"), m.get("frequency"), m.get("time")] if p]
-            tk.Label(info, text=" · ".join(parts), bg=COLORS["bg_card"],
-                     fg=COLORS["text_muted"], font=font("sm"), anchor="w").pack(fill="x")
-            acts = tk.Frame(row, bg=COLORS["bg_card"])
+            tk.Label(info, text="  ·  ".join(parts), bg=COLORS["bg_surface"],
+                     fg=COLORS["text_muted"], font=font("xs"), anchor="w").pack(fill="x")
+
+            acts = tk.Frame(inner, bg=COLORS["bg_surface"])
             acts.pack(side="right")
-            if not done:
-                ghost_btn(acts, "Skip", command=lambda mn=m["name"], mid=m["id"]: self._skip(mid, mn)).pack()
+            if done:
+                tk.Label(acts, text="Given ✓", bg=COLORS["bg_surface"],
+                         fg=COLORS["accent_green"], font=font("xs", "bold")).pack()
             else:
-                tk.Label(acts, text="Given", bg=COLORS["badge_done_bg"],
-                         fg=COLORS["badge_done_fg"], font=font("xs","bold"), padx=8, pady=3).pack()
+                ghost_btn(acts, "Skip",
+                          command=lambda mn=m["name"], mid=m["id"]: self._skip(mid, mn)).pack()
 
     def _build_all(self):
-        sf = ScrollableFrame(self._stack_all, bg=COLORS["bg_base"])
+        sf = ScrollableFrame(self._tab_all, bg=COLORS["bg_base"])
         sf.pack(fill="both", expand=True)
         f = sf.scrollable_frame
         if not self._all:
-            EmptyState(f, "💊", "No medications added yet").pack(fill="both", expand=True, pady=40)
+            EmptyState(f, "💊", "No medications added yet",
+                       bg=COLORS["bg_base"]).pack(fill="both", expand=True, pady=40)
             return
         for m in self._all:
-            row = tk.Frame(f, bg=COLORS["bg_card"], pady=12, padx=14)
-            row.pack(fill="x", pady=(0,6))
-            dot_color = COLORS["accent_sage"] if m.active else COLORS["text_muted"]
-            tk.Label(row, text="●", bg=COLORS["bg_card"], fg=dot_color, font=font("xs")).pack(side="left", padx=(0,10))
-            info = tk.Frame(row, bg=COLORS["bg_card"])
+            row = tk.Frame(f, bg=COLORS["bg_surface"])
+            row.pack(fill="x", pady=(0, 1))
+            accent = COLORS["accent_green"] if m.active else COLORS["text_muted"]
+            tk.Frame(row, bg=accent, width=3).pack(side="left", fill="y")
+            inner = tk.Frame(row, bg=COLORS["bg_surface"], padx=14, pady=10)
+            inner.pack(side="left", fill="both", expand=True)
+
+            info = tk.Frame(inner, bg=COLORS["bg_surface"])
             info.pack(side="left", fill="x", expand=True)
-            tk.Label(info, text=m.name, bg=COLORS["bg_card"],
-                     fg=COLORS["text_primary"], font=font("base","bold"), anchor="w").pack(fill="x")
-            parts = [p for p in [m.dosage, m.frequency, m.end_date and f"Until {m.end_date}"] if p]
-            tk.Label(info, text=" · ".join(parts), bg=COLORS["bg_card"],
-                     fg=COLORS["text_muted"], font=font("sm"), anchor="w").pack(fill="x")
-            acts = tk.Frame(row, bg=COLORS["bg_card"])
+            tk.Label(info, text=m.name, bg=COLORS["bg_surface"],
+                     fg=COLORS["text_primary"], font=font("sm", "bold"),
+                     anchor="w").pack(fill="x")
+            parts = [p for p in [m.dosage, m.frequency,
+                                  m.end_date and f"Until {m.end_date}"] if p]
+            tk.Label(info, text="  ·  ".join(parts), bg=COLORS["bg_surface"],
+                     fg=COLORS["text_muted"], font=font("xs"), anchor="w").pack(fill="x")
+
+            acts = tk.Frame(inner, bg=COLORS["bg_surface"])
             acts.pack(side="right")
-            ghost_btn(acts, "Edit", command=lambda med=m: self._open_edit(med)).pack(side="left", padx=(0,4))
-            ghost_btn(acts, "✕", command=lambda mid=m.id: self.cb_delete_med and self.cb_delete_med(mid)).pack(side="left")
+            ghost_btn(acts, "Edit",
+                      command=lambda med=m: self._open_edit(med)).pack(side="left", padx=(0, 4))
+            ghost_btn(acts, "✕",
+                      command=lambda mid=m.id: self.cb_delete_med and self.cb_delete_med(mid),
+                      fg=COLORS["accent_red"]).pack(side="left")
 
     def _skip(self, med_id, med_name):
         dlg = tk.Toplevel(self)
         dlg.title("Skip Dose")
-        dlg.configure(bg=COLORS["bg_card"])
+        dlg.configure(bg=COLORS["bg_surface"])
         dlg.grab_set()
         dlg.transient(self)
-        tk.Label(dlg, text=f"Skip dose of {med_name}?", bg=COLORS["bg_card"],
-                 fg=COLORS["text_primary"], font=font("md","bold")).pack(padx=20, pady=(20,8))
-        form_label(dlg, "Reason (optional)").pack(anchor="w", padx=20)
-        reason_var = tk.StringVar()
-        styled_entry(dlg, reason_var, placeholder="Pet refused…").pack(fill="x", padx=20, pady=(0,12))
-        acts = tk.Frame(dlg, bg=COLORS["bg_card"])
-        acts.pack(fill="x", padx=20, pady=(0,20))
-        ghost_btn(acts, "Cancel", dlg.destroy).pack(side="right", padx=(8,0))
+        bg = COLORS["bg_surface"]
+        tk.Label(dlg, text=f"Skip dose of {med_name}?", bg=bg,
+                 fg=COLORS["text_primary"], font=font("md", "bold")).pack(padx=24, pady=(20, 4))
+        tk.Frame(dlg, bg=COLORS["border"], height=1).pack(fill="x", padx=24, pady=(0, 12))
+        form_label(dlg, "Reason (optional)", bg=bg).pack(anchor="w", padx=24)
+        reason_f = styled_entry(dlg, placeholder="Pet refused, out of medication…", bg=bg)
+        reason_f.pack(fill="x", padx=24, pady=(4, 16))
+        acts = tk.Frame(dlg, bg=bg)
+        acts.pack(fill="x", padx=24, pady=(0, 20))
+        ghost_btn(acts, "Cancel", dlg.destroy).pack(side="right", padx=(8, 0))
         def do_skip():
-            if self.cb_skip_dose: self.cb_skip_dose(med_id, reason_var.get())
+            if self.cb_skip_dose: self.cb_skip_dose(med_id, reason_f.get())
             dlg.destroy()
         danger_btn(acts, "Skip Dose", do_skip).pack(side="right")
 
@@ -265,5 +274,5 @@ class MedicationsPage(tk.Frame):
         MedDialog(self, self._pet.id, med=med,
                   on_save=lambda d: self.cb_edit_med and self.cb_edit_med(d))
 
-    def _clear_content(self):
+    def _clear(self):
         for w in self._content.winfo_children(): w.destroy()

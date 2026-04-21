@@ -1,17 +1,17 @@
 """
-views/pages/calendar_page.py
+views/pages/calendar_page.py — Kendra Pro
 """
 import tkinter as tk
 from tkcalendar import Calendar
 from assets.styles.theme import COLORS, font
-from views.pages.base import ScrollableFrame, section_label, ghost_btn
+from views.pages.base import ScrollableFrame, section_label, ghost_btn, page_header
 from models.database import get_db
 
 TYPE_COLORS = {
-    "feeding":    COLORS["accent_gold"],
-    "medication": COLORS["accent_sage"],
-    "grooming":   COLORS["accent_lavender"],
-    "birthday":   COLORS["accent_rust"],
+    "feeding":    COLORS["accent_amber"],
+    "medication": COLORS["accent_green"],
+    "grooming":   COLORS["accent_purple"],
+    "birthday":   COLORS["accent_orange"],
 }
 TYPE_ICONS = {
     "feeding": "🍽", "medication": "💊",
@@ -19,7 +19,7 @@ TYPE_ICONS = {
 }
 
 
-def _get_events(date_str: str) -> list[dict]:
+def _get_events(date_str):
     conn = get_db()
     events = []
     rows = conn.execute(
@@ -60,60 +60,56 @@ class CalendarPage(tk.Frame):
         self._build()
 
     def _build(self):
-        hdr = tk.Frame(self, bg=COLORS["bg_base"])
-        hdr.pack(fill="x", padx=36, pady=(32, 16))
-        tk.Label(hdr, text="Calendar", bg=COLORS["bg_base"],
-                 fg=COLORS["text_primary"], font=font("hero","bold")).pack(anchor="w")
-        tk.Label(hdr, text="All schedules and events at a glance",
-                 bg=COLORS["bg_base"], fg=COLORS["text_muted"], font=font("sm")).pack(anchor="w")
+        hdr = page_header(self, "Calendar",
+                          subtitle="All schedules and events at a glance")
+        hdr.pack(fill="x", padx=32, pady=(28, 20))
 
         body = tk.Frame(self, bg=COLORS["bg_base"])
-        body.pack(fill="both", expand=True, padx=36, pady=(0,32))
+        body.pack(fill="both", expand=True, padx=32, pady=(0, 32))
 
-        # Calendar widget
+        # Left: calendar
         left = tk.Frame(body, bg=COLORS["bg_base"])
         left.pack(side="left", fill="y", padx=(0, 24))
 
         self._cal = Calendar(
             left,
             selectmode="day",
-            background=COLORS["bg_card"],
+            background=COLORS["bg_surface"],
             foreground=COLORS["text_primary"],
             headersbackground=COLORS["bg_elevated"],
-            headersforeground=COLORS["accent_gold"],
-            selectbackground=COLORS["accent_gold"],
+            headersforeground=COLORS["accent"],
+            selectbackground=COLORS["accent"],
             selectforeground=COLORS["text_inverse"],
-            weekendbackground=COLORS["bg_card"],
+            weekendbackground=COLORS["bg_surface"],
             weekendforeground=COLORS["text_secondary"],
-            othermonthbackground=COLORS["bg_surface"],
+            othermonthbackground=COLORS["bg_base"],
             othermonthforeground=COLORS["text_muted"],
-            font=font("base"),
+            font=font("sm"),
             bordercolor=COLORS["border"],
-            normalbackground=COLORS["bg_card"],
+            normalbackground=COLORS["bg_surface"],
             normalforeground=COLORS["text_primary"],
         )
         self._cal.pack()
         self._cal.bind("<<CalendarSelected>>", self._on_date_change)
 
-        # Events panel
+        # Right: events
         right = tk.Frame(body, bg=COLORS["bg_base"])
         right.pack(side="left", fill="both", expand=True)
 
         self._event_title = tk.Label(
             right, text="Today's Events",
             bg=COLORS["bg_base"], fg=COLORS["text_primary"],
-            font=font("lg","bold"), anchor="w",
+            font=font("lg", "bold"), anchor="w",
         )
-        self._event_title.pack(fill="x", pady=(0,12))
+        self._event_title.pack(fill="x", pady=(0, 12))
 
-        self._events_frame = ScrollableFrame(right, bg=COLORS["bg_base"])
-        self._events_frame.pack(fill="both", expand=True)
+        self._sf = ScrollableFrame(right, bg=COLORS["bg_base"])
+        self._sf.pack(fill="both", expand=True)
 
         self._on_date_change()
 
     def _on_date_change(self, event=None):
         date_str = self._cal.get_date()
-        # tkcalendar returns MM/DD/YY — convert to YYYY-MM-DD
         try:
             from datetime import datetime
             dt = datetime.strptime(date_str, "%m/%d/%y")
@@ -122,32 +118,41 @@ class CalendarPage(tk.Frame):
         except Exception:
             self._event_title.config(text="Events")
 
-        f = self._events_frame.scrollable_frame
+        f = self._sf.scrollable_frame
         for w in f.winfo_children(): w.destroy()
 
         events = _get_events(date_str)
         if not events:
             tk.Label(f, text="No events for this day.",
-                     bg=COLORS["bg_base"], fg=COLORS["text_muted"],
-                     font=font("base")).pack(pady=30)
+                     bg=COLORS["bg_base"], fg=COLORS["text_secondary"],
+                     font=font("sm")).pack(pady=30)
             return
 
         for ev in events:
-            row = tk.Frame(f, bg=COLORS["bg_card"], pady=10, padx=12)
-            row.pack(fill="x", pady=(0,8))
-            color = TYPE_COLORS.get(ev["type"], COLORS["accent_gold"])
+            color = TYPE_COLORS.get(ev["type"], COLORS["accent"])
             icon  = TYPE_ICONS.get(ev["type"], "🔔")
-            tk.Label(row, text=icon, bg=COLORS["bg_elevated"],
-                     font=font("md"), padx=6, pady=4).pack(side="left", padx=(0,10))
-            info = tk.Frame(row, bg=COLORS["bg_card"])
+
+            row = tk.Frame(f, bg=COLORS["bg_surface"])
+            row.pack(fill="x", pady=(0, 1))
+            tk.Frame(row, bg=color, width=3).pack(side="left", fill="y")
+            inner = tk.Frame(row, bg=COLORS["bg_surface"], padx=14, pady=10)
+            inner.pack(side="left", fill="both", expand=True)
+
+            tk.Label(inner, text=icon, bg=COLORS["bg_surface"],
+                     fg=color, font=font("base")).pack(side="left", padx=(0, 10))
+
+            info = tk.Frame(inner, bg=COLORS["bg_surface"])
             info.pack(side="left", fill="x", expand=True)
-            tk.Label(info, text=ev.get("meal_name",""), bg=COLORS["bg_card"],
-                     fg=color, font=font("base","bold"), anchor="w").pack(fill="x")
-            tk.Label(info, text=ev.get("pet_name",""), bg=COLORS["bg_card"],
-                     fg=COLORS["text_muted"], font=font("sm"), anchor="w").pack(fill="x")
+            tk.Label(info, text=ev.get("meal_name", ""), bg=COLORS["bg_surface"],
+                     fg=COLORS["text_primary"], font=font("sm", "bold"),
+                     anchor="w").pack(fill="x")
+            tk.Label(info, text=ev.get("pet_name", ""), bg=COLORS["bg_surface"],
+                     fg=COLORS["text_muted"], font=font("xs"),
+                     anchor="w").pack(fill="x")
+
             if ev.get("time"):
-                tk.Label(row, text=ev["time"], bg=COLORS["bg_card"],
-                         fg=COLORS["text_muted"], font=font("sm")).pack(side="right")
+                tk.Label(inner, text=ev["time"], bg=COLORS["bg_surface"],
+                         fg=COLORS["text_muted"], font=font("xs")).pack(side="right")
 
     def load(self):
         self._on_date_change()

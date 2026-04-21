@@ -1,16 +1,15 @@
 """
-views/pages/feeding.py
+views/pages/feeding.py — Kendra Pro
+Clean list rows, accent bar style, scroll only in list area.
 """
 import tkinter as tk
-from tkinter import ttk, simpledialog
-from datetime import datetime
-
-from assets.styles.theme import COLORS, font, PAD
+from assets.styles.theme import COLORS, font
 from views.pages.base import (
-    ScrollableFrame, ProgressBar, TabBar, ItemRow,
-    primary_btn, ghost_btn, danger_btn, section_label,
-    body_label, muted_label, badge, divider, NoPetWidget,
-    EmptyState, styled_entry, form_label, styled_combobox
+    ScrollableFrame, ProgressBar, TabBar,
+    primary_btn, ghost_btn, danger_btn,
+    section_label, form_label, styled_entry,
+    styled_combobox, EmptyState, NoPetWidget,
+    check_btn, page_header, BorderCard, divider
 )
 
 DAYS = [("1","Mon"),("2","Tue"),("3","Wed"),("4","Thu"),
@@ -18,71 +17,64 @@ DAYS = [("1","Mon"),("2","Tue"),("3","Wed"),("4","Thu"),
 
 
 class ScheduleDialog(tk.Toplevel):
-    def __init__(self, parent, pet_id: int, schedule: dict = None,
-                 on_save=None):
+    def __init__(self, parent, pet_id, schedule=None, on_save=None):
         super().__init__(parent)
-        self.pet_id   = pet_id
+        self.pet_id = pet_id
         self.schedule = schedule
         self._on_save = on_save
-        self.title("Edit Meal" if schedule else "Add Meal Schedule")
+        self.title("Edit Meal" if schedule else "Add Meal")
+        self.configure(bg=COLORS["bg_surface"])
         self.resizable(False, False)
-        self.configure(bg=COLORS["bg_card"])
         self.grab_set()
-        self._build()
         self.transient(parent)
+        self._build()
 
     def _build(self):
-        pad = dict(padx=20, pady=8)
+        bg = COLORS["bg_surface"]
+        tk.Label(self, text="Edit Meal" if self.schedule else "Add Meal Schedule",
+                 bg=bg, fg=COLORS["text_primary"],
+                 font=font("lg", "bold")).pack(anchor="w", padx=24, pady=(20, 4))
+        tk.Frame(self, bg=COLORS["border"], height=1).pack(fill="x", padx=24, pady=(0, 16))
 
-        tk.Label(
-            self,
-            text="Edit Meal" if self.schedule else "Add Meal Schedule",
-            bg=COLORS["bg_card"], fg=COLORS["text_primary"],
-            font=font("lg", "bold"),
-        ).pack(anchor="w", padx=20, pady=(20, 4))
-
-        # Meal name
-        form_label(self, "Meal Name").pack(anchor="w", **pad)
-        self._name_var = tk.StringVar(
-            value=self.schedule["meal_name"] if self.schedule else ""
-        )
-        f = styled_entry(self, self._name_var, placeholder="Breakfast, Dinner…")
-        f.pack(fill="x", padx=20, pady=(0, 8))
+        # Name
+        form_label(self, "Meal Name", bg=bg).pack(anchor="w", padx=24)
+        self._name_f = styled_entry(self, placeholder="Meal name", bg=bg)
+        self._name_f.pack(fill="x", padx=24, pady=(4, 12))
+        if self.schedule:
+            self._name_f.set(self.schedule["meal_name"])
 
         # Time
-        form_label(self, "Time (HH:MM)").pack(anchor="w", **pad)
-        self._time_var = tk.StringVar(
-            value=self.schedule["time"] if self.schedule else "08:00"
-        )
-        f2 = styled_entry(self, self._time_var, placeholder="08:00", width=10)
-        f2.pack(anchor="w", padx=20, pady=(0, 8))
+        row1 = tk.Frame(self, bg=bg)
+        row1.pack(fill="x", padx=24, pady=(0, 12))
+        t_col = tk.Frame(row1, bg=bg)
+        t_col.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        form_label(t_col, "Time (HH:MM)", bg=bg).pack(anchor="w")
+        self._time_f = styled_entry(t_col, placeholder="08:00", width=10, bg=bg)
+        self._time_f.pack(fill="x", pady=(4, 0))
+        if self.schedule:
+            self._time_f.set(self.schedule["time"])
 
-        # Food + portion row
-        row = tk.Frame(self, bg=COLORS["bg_card"])
-        row.pack(fill="x", padx=20, pady=(0, 8))
+        # Food + portion
+        f_col = tk.Frame(row1, bg=bg)
+        f_col.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        form_label(f_col, "Food Type", bg=bg).pack(anchor="w")
+        self._food_f = styled_entry(f_col, placeholder="Dry kibble, wet food…", bg=bg)
+        self._food_f.pack(fill="x", pady=(4, 0))
+        if self.schedule and self.schedule.get("food_type"):
+            self._food_f.set(self.schedule["food_type"])
 
-        food_col = tk.Frame(row, bg=COLORS["bg_card"])
-        food_col.pack(side="left", fill="x", expand=True, padx=(0, 10))
-        form_label(food_col, "Food Type").pack(anchor="w")
-        self._food_var = tk.StringVar(
-            value=self.schedule.get("food_type") or "" if self.schedule else ""
-        )
-        styled_entry(food_col, self._food_var,
-                     placeholder="Dry kibble…").pack(fill="x")
+        p_col = tk.Frame(row1, bg=bg)
+        p_col.pack(side="left", fill="x", expand=True)
+        form_label(p_col, "Portion", bg=bg).pack(anchor="w")
+        self._portion_f = styled_entry(p_col, placeholder="1 cup, 200g…", bg=bg)
+        self._portion_f.pack(fill="x", pady=(4, 0))
+        if self.schedule and self.schedule.get("portion"):
+            self._portion_f.set(self.schedule["portion"])
 
-        portion_col = tk.Frame(row, bg=COLORS["bg_card"])
-        portion_col.pack(side="left", fill="x", expand=True)
-        form_label(portion_col, "Portion").pack(anchor="w")
-        self._portion_var = tk.StringVar(
-            value=self.schedule.get("portion") or "" if self.schedule else ""
-        )
-        styled_entry(portion_col, self._portion_var,
-                     placeholder="1 cup…").pack(fill="x")
-
-        # Days of week
-        form_label(self, "Days of Week").pack(anchor="w", **pad)
-        days_frame = tk.Frame(self, bg=COLORS["bg_card"])
-        days_frame.pack(anchor="w", padx=20, pady=(0, 12))
+        # Days
+        form_label(self, "Days of Week", bg=bg).pack(anchor="w", padx=24)
+        days_row = tk.Frame(self, bg=bg)
+        days_row.pack(anchor="w", padx=24, pady=(4, 16))
 
         selected = (
             self.schedule["days_of_week"] if self.schedule else "1,2,3,4,5,6,7"
@@ -91,280 +83,193 @@ class ScheduleDialog(tk.Toplevel):
         for val, label in DAYS:
             var = tk.BooleanVar(value=val in selected)
             self._day_vars[val] = var
-            bg = COLORS["bg_elevated"] if val in selected else COLORS["bg_input"]
             cb = tk.Checkbutton(
-                days_frame, text=label, variable=var,
-                bg=COLORS["bg_card"],
-                fg=COLORS["accent_gold"],
+                days_row, text=label, variable=var,
+                bg=bg, fg=COLORS["text_secondary"],
                 selectcolor=COLORS["bg_elevated"],
-                activebackground=COLORS["bg_card"],
+                activebackground=bg,
                 font=font("sm"),
             )
-            cb.pack(side="left", padx=3)
+            cb.pack(side="left", padx=2)
 
         # Actions
-        actions = tk.Frame(self, bg=COLORS["bg_card"])
-        actions.pack(fill="x", padx=20, pady=(8, 20))
+        tk.Frame(self, bg=COLORS["border"], height=1).pack(fill="x", padx=24, pady=(0, 12))
+        acts = tk.Frame(self, bg=bg)
+        acts.pack(fill="x", padx=24, pady=(0, 20))
+        ghost_btn(acts, "Cancel", self.destroy).pack(side="right", padx=(8, 0))
+        primary_btn(acts, "Save" if self.schedule else "Add Meal",
+                    self._submit).pack(side="right")
 
-        ghost_btn(actions, "Cancel", self.destroy).pack(side="right", padx=(8, 0))
-        primary_btn(
-            actions,
-            "Save" if self.schedule else "Add Meal",
-            self._on_submit,
-        ).pack(side="right")
-
-    def _on_submit(self):
-        name = self._name_var.get().strip()
-        if not name:
-            return
+    def _submit(self):
+        name = self._name_f.get().strip()
+        if not name: return
         days = ",".join(k for k, v in self._day_vars.items() if v.get()) or "1"
-        data = {
-            "pet_id":       self.pet_id,
-            "meal_name":    name,
-            "time":         self._time_var.get().strip() or "08:00",
-            "food_type":    self._food_var.get().strip() or None,
-            "portion":      self._portion_var.get().strip() or None,
-            "days_of_week": days,
-            "schedule_id":  self.schedule["id"] if self.schedule else None,
-        }
         if self._on_save:
-            self._on_save(data)
+            self._on_save({
+                "pet_id": self.pet_id,
+                "meal_name": name,
+                "time": self._time_f.get().strip() or "08:00",
+                "food_type": self._food_f.get().strip() or None,
+                "portion": self._portion_f.get().strip() or None,
+                "days_of_week": days,
+                "schedule_id": self.schedule["id"] if self.schedule else None,
+            })
         self.destroy()
 
 
 class FeedingPage(tk.Frame):
     def __init__(self, parent, **kwargs):
         super().__init__(parent, bg=COLORS["bg_base"], **kwargs)
-        self._pet       = None
-        self._today     = []
+        self._pet = None
+        self._today = []
         self._schedules = []
+        self.cb_mark_done = None
+        self.cb_add_schedule = None
+        self.cb_edit_schedule = None
+        self.cb_delete_schedule = None
 
-        # Callbacks set by controller
-        self.cb_mark_done        = None
-        self.cb_add_schedule     = None
-        self.cb_edit_schedule    = None
-        self.cb_delete_schedule  = None
+        # Header (static)
+        self._hdr = page_header(self, "Feeding", action_text="＋  Add Meal",
+                                action_cmd=self._open_add)
+        self._hdr.pack(fill="x", padx=32, pady=(28, 0))
+        self._subtitle = tk.Label(self, text="", bg=COLORS["bg_base"],
+                                  fg=COLORS["text_secondary"], font=font("sm"), anchor="w")
+        self._subtitle.pack(fill="x", padx=32, pady=(2, 16))
 
-        self._build_header()
+        # Content area (rebuilt on load)
         self._content = tk.Frame(self, bg=COLORS["bg_base"])
-        self._content.pack(fill="both", expand=True,
-                           padx=32, pady=(0, 32))
-
-    def _build_header(self):
-        hdr = tk.Frame(self, bg=COLORS["bg_base"])
-        hdr.pack(fill="x", padx=32, pady=(32, 16))
-
-        left = tk.Frame(hdr, bg=COLORS["bg_base"])
-        left.pack(side="left", fill="x", expand=True)
-
-        tk.Label(
-            left, text="Feeding",
-            bg=COLORS["bg_base"], fg=COLORS["text_primary"],
-            font=font("hero", "bold"), anchor="w",
-        ).pack(fill="x")
-
-        self._subtitle = tk.Label(
-            left, text="",
-            bg=COLORS["bg_base"], fg=COLORS["text_muted"],
-            font=font("sm"), anchor="w",
-        )
-        self._subtitle.pack(fill="x")
-
-        self._add_btn = primary_btn(hdr, "＋  Add Meal",
-                                    self._open_add_dialog)
-        self._add_btn.pack(side="right", anchor="n")
+        self._content.pack(fill="both", expand=True, padx=32, pady=(0, 24))
 
     def show_no_pet(self):
-        self._clear_content()
-        NoPetWidget(self._content, "feeding").pack(
-            fill="both", expand=True
-        )
+        self._clear()
+        NoPetWidget(self._content, "feeding").pack(fill="both", expand=True)
 
-    def load(self, pet, today: list, schedules: list):
-        self._pet       = pet
-        self._today     = today
+    def load(self, pet, today, schedules):
+        self._pet = pet
+        self._today = today
         self._schedules = schedules
         self._subtitle.config(text=f"{pet.name}'s meal schedule")
         self._refresh()
 
     def _refresh(self):
-        self._clear_content()
-
-        # Progress
+        self._clear()
         done  = sum(1 for s in self._today if s.get("done_today"))
         total = len(self._today)
-        pb = ProgressBar(self._content, label="Today's meals")
+
+        pb = ProgressBar(self._content, "Today's meals", bg=COLORS["bg_base"])
         pb.pack(fill="x", pady=(0, 16))
         pb.update_progress(done, total)
 
-        # Tabs
-        self._stack_today = tk.Frame(self._content, bg=COLORS["bg_base"])
-        self._stack_sched = tk.Frame(self._content, bg=COLORS["bg_base"])
+        self._tab_today = tk.Frame(self._content, bg=COLORS["bg_base"])
+        self._tab_sched = tk.Frame(self._content, bg=COLORS["bg_base"])
 
-        def on_tab(idx):
+        def switch(idx):
             if idx == 0:
-                self._stack_today.pack(fill="both", expand=True)
-                self._stack_sched.pack_forget()
+                self._tab_today.pack(fill="both", expand=True)
+                self._tab_sched.pack_forget()
             else:
-                self._stack_sched.pack(fill="both", expand=True)
-                self._stack_today.pack_forget()
+                self._tab_sched.pack(fill="both", expand=True)
+                self._tab_today.pack_forget()
 
-        TabBar(
-            self._content,
-            ["Today", "All Schedules"],
-            on_change=on_tab,
-        ).pack(fill="x", pady=(0, 12))
+        TabBar(self._content, ["Today", "All Schedules"],
+               on_change=switch).pack(fill="x", pady=(0, 12))
 
-        self._build_today_list()
-        self._build_schedule_list()
-        self._stack_today.pack(fill="both", expand=True)
+        self._build_today()
+        self._build_schedules()
+        self._tab_today.pack(fill="both", expand=True)
 
-    def _build_today_list(self):
-        for w in self._stack_today.winfo_children():
-            w.destroy()
-
-        sf = ScrollableFrame(self._stack_today, bg=COLORS["bg_base"])
+    def _build_today(self):
+        sf = ScrollableFrame(self._tab_today, bg=COLORS["bg_base"])
         sf.pack(fill="both", expand=True)
         f = sf.scrollable_frame
 
         if not self._today:
-            EmptyState(f, "🍽️", "No meals today",
-                       "Add a meal schedule to get started.").pack(
-                fill="both", expand=True, pady=40
-            )
+            EmptyState(f, "🍽", "No meals scheduled today",
+                       "Add a meal schedule to track feeding.",
+                       bg=COLORS["bg_base"]).pack(fill="both", expand=True, pady=40)
             return
 
         for s in self._today:
-            row = tk.Frame(f, bg=COLORS["bg_card"],
-                           pady=12, padx=14)
-            row.pack(fill="x", pady=(0, 6))
-
-            # Checkbox button
             done = s.get("done_today", False)
-            cb_text = "✓" if done else "○"
-            cb_color = COLORS["accent_sage"] if done else COLORS["text_muted"]
+            row = tk.Frame(f, bg=COLORS["bg_surface"])
+            row.pack(fill="x", pady=(0, 1))
 
-            cb = tk.Button(
-                row, text=cb_text,
-                bg=COLORS["accent_sage"] if done else COLORS["bg_elevated"],
-                fg="white" if done else COLORS["text_muted"],
-                font=font("base", "bold"),
-                relief="flat", bd=0, width=3,
-                cursor="hand2" if not done else "arrow",
-            )
+            # Accent bar: green if done, amber if pending
+            accent = COLORS["accent_green"] if done else COLORS["accent_amber"]
+            tk.Frame(row, bg=accent, width=3).pack(side="left", fill="y")
+
+            inner = tk.Frame(row, bg=COLORS["bg_surface"], padx=14, pady=10)
+            inner.pack(side="left", fill="both", expand=True)
+
+            # Check button
+            cb = check_btn(inner, done,
+                           command=lambda sc=s: self.cb_mark_done and self.cb_mark_done(sc),
+                           bg=COLORS["bg_surface"])
             cb.pack(side="left", padx=(0, 12))
-            if not done:
-                cb.config(command=lambda sc=s: self._mark_done(sc))
 
             # Info
-            info = tk.Frame(row, bg=COLORS["bg_card"])
+            info = tk.Frame(inner, bg=COLORS["bg_surface"])
             info.pack(side="left", fill="x", expand=True)
+            tk.Label(info, text=s["meal_name"], bg=COLORS["bg_surface"],
+                     fg=COLORS["text_primary"], font=font("base", "bold"),
+                     anchor="w").pack(fill="x")
 
-            tk.Label(
-                info, text=s["meal_name"],
-                bg=COLORS["bg_card"], fg=COLORS["text_primary"],
-                font=font("base", "bold"), anchor="w",
-            ).pack(fill="x")
+            parts = [p for p in [s.get("food_type"), s.get("portion"), s["time"]] if p]
+            tk.Label(info, text="  ·  ".join(parts), bg=COLORS["bg_surface"],
+                     fg=COLORS["text_muted"], font=font("xs"), anchor="w").pack(fill="x")
 
-            meta_parts = []
-            if s.get("food_type"): meta_parts.append(s["food_type"])
-            if s.get("portion"):   meta_parts.append(s["portion"])
-            meta_parts.append(s["time"])
-            tk.Label(
-                info, text=" · ".join(meta_parts),
-                bg=COLORS["bg_card"], fg=COLORS["text_muted"],
-                font=font("sm"), anchor="w",
-            ).pack(fill="x")
-
-            # Badge
+            # Status
             if done:
-                tk.Label(
-                    row, text="Done",
-                    bg=COLORS["badge_done_bg"],
-                    fg=COLORS["badge_done_fg"],
-                    font=font("xs", "bold"),
-                    padx=8, pady=3,
-                ).pack(side="right")
+                tk.Label(inner, text="Done", bg=COLORS["bg_surface"],
+                         fg=COLORS["accent_green"],
+                         font=font("xs", "bold")).pack(side="right")
 
-    def _build_schedule_list(self):
-        for w in self._stack_sched.winfo_children():
-            w.destroy()
-
-        sf = ScrollableFrame(self._stack_sched, bg=COLORS["bg_base"])
+    def _build_schedules(self):
+        sf = ScrollableFrame(self._tab_sched, bg=COLORS["bg_base"])
         sf.pack(fill="both", expand=True)
         f = sf.scrollable_frame
 
         if not self._schedules:
             EmptyState(f, "📅", "No schedules yet",
-                       "Create meal schedules and they'll appear here.").pack(
-                fill="both", expand=True, pady=40
-            )
+                       "Add recurring meal times for your pet.",
+                       bg=COLORS["bg_base"]).pack(fill="both", expand=True, pady=40)
             return
 
         for s in self._schedules:
-            row = tk.Frame(f, bg=COLORS["bg_card"],
-                           pady=12, padx=14)
-            row.pack(fill="x", pady=(0, 6))
+            row = tk.Frame(f, bg=COLORS["bg_surface"])
+            row.pack(fill="x", pady=(0, 1))
+            tk.Frame(row, bg=COLORS["accent"], width=3).pack(side="left", fill="y")
+            inner = tk.Frame(row, bg=COLORS["bg_surface"], padx=14, pady=10)
+            inner.pack(side="left", fill="both", expand=True)
 
-            info = tk.Frame(row, bg=COLORS["bg_card"])
+            info = tk.Frame(inner, bg=COLORS["bg_surface"])
             info.pack(side="left", fill="x", expand=True)
+            tk.Label(info, text=s.meal_name, bg=COLORS["bg_surface"],
+                     fg=COLORS["text_primary"], font=font("sm", "bold"),
+                     anchor="w").pack(fill="x")
+            parts = [p for p in [s.food_type, s.portion, s.time] if p]
+            tk.Label(info, text="  ·  ".join(parts), bg=COLORS["bg_surface"],
+                     fg=COLORS["text_muted"], font=font("xs"), anchor="w").pack(fill="x")
 
-            tk.Label(
-                info, text=s.meal_name,
-                bg=COLORS["bg_card"], fg=COLORS["text_primary"],
-                font=font("base", "bold"), anchor="w",
-            ).pack(fill="x")
-
-            parts = []
-            if s.food_type: parts.append(s.food_type)
-            if s.portion:   parts.append(s.portion)
-            parts.append(s.time)
-            tk.Label(
-                info, text=" · ".join(parts),
-                bg=COLORS["bg_card"], fg=COLORS["text_muted"],
-                font=font("sm"), anchor="w",
-            ).pack(fill="x")
-
-            acts = tk.Frame(row, bg=COLORS["bg_card"])
+            acts = tk.Frame(inner, bg=COLORS["bg_surface"])
             acts.pack(side="right")
+            ghost_btn(acts, "Edit",
+                      command=lambda sc=s: self._open_edit(sc)).pack(side="left", padx=(0, 4))
+            ghost_btn(acts, "✕",
+                      command=lambda sc=s: self.cb_delete_schedule and self.cb_delete_schedule(sc.id),
+                      fg=COLORS["accent_red"]).pack(side="left")
 
-            ghost_btn(
-                acts, "Edit",
-                command=lambda sc=s: self._open_edit_dialog(sc)
-            ).pack(side="left", padx=(0, 4))
+    def _open_add(self):
+        if not self._pet: return
+        ScheduleDialog(self, self._pet.id,
+                       on_save=lambda d: self.cb_add_schedule and self.cb_add_schedule(d))
 
-            ghost_btn(
-                acts, "✕",
-                command=lambda sc=s: self._delete(sc.id)
-            ).pack(side="left")
+    def _open_edit(self, s):
+        ScheduleDialog(self, self._pet.id,
+                       schedule=dict(id=s.id, meal_name=s.meal_name, time=s.time,
+                                     days_of_week=s.days_of_week,
+                                     food_type=s.food_type, portion=s.portion),
+                       on_save=lambda d: self.cb_edit_schedule and self.cb_edit_schedule(d))
 
-    def _mark_done(self, schedule):
-        if self.cb_mark_done:
-            self.cb_mark_done(schedule)
-
-    def _delete(self, schedule_id):
-        if self.cb_delete_schedule:
-            self.cb_delete_schedule(schedule_id)
-
-    def _open_add_dialog(self):
-        if not self._pet:
-            return
-        ScheduleDialog(
-            self, self._pet.id,
-            on_save=lambda d: self.cb_add_schedule and self.cb_add_schedule(d)
-        )
-
-    def _open_edit_dialog(self, schedule):
-        ScheduleDialog(
-            self, self._pet.id,
-            schedule=dict(
-                id=schedule.id, meal_name=schedule.meal_name,
-                time=schedule.time, days_of_week=schedule.days_of_week,
-                food_type=schedule.food_type, portion=schedule.portion,
-            ),
-            on_save=lambda d: self.cb_edit_schedule and self.cb_edit_schedule(d)
-        )
-
-    def _clear_content(self):
-        for w in self._content.winfo_children():
-            w.destroy()
+    def _clear(self):
+        for w in self._content.winfo_children(): w.destroy()
